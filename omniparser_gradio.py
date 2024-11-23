@@ -34,6 +34,16 @@ def create_interface():
         except Exception as e:
             print(f"Error loading JSON data: {str(e)}")
             return []
+            
+    def reset_sequence():
+        nonlocal current_elements
+        current_elements = []
+        result = parser.reset_sequence()
+        return (
+            None,  # Clear image
+            gr.Dropdown(choices=[], value=None),  # Clear dropdown
+            result  # Reset status to initial message
+        )
 
     def process_and_display(image, current_status):
         """Handle new image processing"""
@@ -135,19 +145,9 @@ def create_interface():
             print(error_msg + "\n" + traceback.format_exc())
             return current_status + error_msg
 
-    def generate_final_script(current_status):
-        result = parser.generate_script()
+    def generate_final_script(current_status, loop_enabled):  # Remove the default value since gradio will provide it
+        result = parser.generate_script(loop_enabled=loop_enabled)
         return current_status + f"\n{result}"
-
-    def reset_sequence():
-        nonlocal current_elements
-        current_elements = []
-        result = parser.reset_sequence()
-        return (
-            None,  # Clear image
-            gr.Dropdown(choices=[], value=None),  # Clear dropdown
-            result  # Reset status to initial message
-        )
 
     interface = gr.Blocks(title="OmniParser Sequence Builder")
     
@@ -224,6 +224,7 @@ def create_interface():
                     
                 pause_input = gr.Number(label="Pause Duration (seconds)", value=0)
                 add_btn = gr.Button("Add to Sequence")
+                loop_checkbox = gr.Checkbox(label="Generate Looping Script", value=False)  # Add this line
                 generate_btn = gr.Button("Generate Script")
                 status_text = gr.Textbox(label="Status", lines=10)
         
@@ -266,7 +267,7 @@ def create_interface():
         
         generate_btn.click(
             generate_final_script,
-            inputs=[status_text],
+            inputs=[status_text, loop_checkbox],  # Add loop_checkbox here
             outputs=[status_text]
         )
 
