@@ -21,9 +21,15 @@ class OmniParserCore:
     def __init__(self):
         self.working_dir = os.getcwd()
         self.scripts_dir = os.path.join(self.working_dir, "scripts")
+        self.parsed_dir = os.path.join(self.working_dir, "parsed")  # New parsed directory
         self.config_file = os.path.join(self.working_dir, "config.json")
         self.config_data = self.load_config()
         self.action_sequence = []
+        
+        # Create necessary directories
+        for directory in [self.scripts_dir, self.parsed_dir]:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
         
         # Define key aliases - mapping common variations to standard keys
         self.key_aliases = {
@@ -65,10 +71,6 @@ class OmniParserCore:
             'up', 'down', 'left', 'right'
         }
 
-        # Create scripts directory if it doesn't exist
-        if not os.path.exists(self.scripts_dir):
-            os.makedirs(self.scripts_dir)
-
     def save_config(self):
         """Save current config to file"""
         try:
@@ -76,6 +78,44 @@ class OmniParserCore:
                 json.dump(self.config_data, f, indent=2)
         except Exception as e:
             print(f"Error saving config: {str(e)}")
+
+    def save_parsed_data(self, image_path: str, labeled_image: np.ndarray, elements: List[Dict]) -> Tuple[str, str]:
+        """
+        Save the labeled image and elements data to the parsed directory.
+        Returns tuple of (saved_image_path, saved_json_path)
+        """
+        try:
+            # Get base filename without extension
+            base_name = os.path.splitext(os.path.basename(image_path))[0]
+            
+            # Create paths for new files
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            image_filename = f"{base_name}_{timestamp}_labeled.png"
+            json_filename = f"{base_name}_{timestamp}_elements.json"
+            
+            saved_image_path = os.path.join(self.parsed_dir, image_filename)
+            saved_json_path = os.path.join(self.parsed_dir, json_filename)
+            
+            # Save labeled image
+            labeled_image_pil = Image.fromarray(labeled_image)
+            labeled_image_pil.save(saved_image_path)
+            
+            # Save elements data
+            with open(saved_json_path, 'w') as f:
+                json.dump({
+                    'original_image': image_path,
+                    'labeled_image': image_filename,
+                    'timestamp': timestamp,
+                    'elements': elements
+                }, f, indent=2)
+                
+            return saved_image_path, saved_json_path
+            
+        except Exception as e:
+            print(f"Error saving parsed data: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return "", ""
 
     def reset_sequence(self):
         """Reset the current sequence and config data"""
@@ -177,7 +217,20 @@ class OmniParserCore:
             # Convert base64 image to numpy array
             import base64, io
             labeled_image = Image.open(io.BytesIO(base64.b64decode(dino_labeled_img)))
-            return np.array(labeled_image), elements
+            labeled_image_array = np.array(labeled_image)
+            
+            # Save the processed data
+            saved_image_path, saved_json_path = self.save_parsed_data(
+                image_path, 
+                labeled_image_array, 
+                elements
+            )
+            
+            if saved_image_path and saved_json_path:
+                print(f"Saved labeled image to: {saved_image_path}")
+                print(f"Saved elements data to: {saved_json_path}")
+            
+            return labeled_image_array, elements
                 
         except Exception as e:
             print(f"Error in process_image: {str(e)}")
