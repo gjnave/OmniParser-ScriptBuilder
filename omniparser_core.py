@@ -307,90 +307,113 @@ class OmniParserCore:
         except Exception as e:
             return f"Error adding action: {str(e)}"
 
-    def generate_script(self):
+    def generate_script(self, loop_enabled=False):
         """Generate Python script from recorded sequence with support for all action types"""
         try:
-            script = """import pyautogui
-import time
-from ctypes import windll
-import win32con
-import win32api
-import keyboard
+            # Define the initial script with no indentation
+            script = (
+                "import pyautogui\n"
+                "import time\n"
+                "from ctypes import windll\n"
+                "import win32con\n"
+                "import win32api\n"
+                "import keyboard\n"
+                "\n"
+                "def execute_sequence():\n"
+                "    # Initialize\n"
+                "    pyautogui.FAILSAFE = True\n"
+                "    print(\"Starting sequence...\")\n"
+                "    time.sleep(3)  # Initial delay to switch windows"
+            )
 
-def execute_sequence():
-    # Initialize
-    pyautogui.FAILSAFE = True
-    print("Starting sequence...")
-    time.sleep(3)  # Initial delay to switch windows
-"""
+            # Add loop structure if enabled
+            if loop_enabled:
+                script += (
+                    "\n"
+                    "    try:\n"
+                    "        while True:\n"
+                    "            print(\"\\nStarting loop iteration...\")"
+                )
+                # Indent the action content for loop
+                action_indent = "            "
+            else:
+                action_indent = "    "
+
             for action_id in self.action_sequence:
                 element = self.config_data["elements"][action_id]
                 action_type = element.get("type", "click")
                 
-                script += f"\n    # Action: {element['name']}\n"
-                script += f"    print(\"Executing: {element['name']}\")\n"
+                script += f"\n{action_indent}# Action: {element['name']}\n"
+                script += f"{action_indent}print(\"Executing: {element['name']}\")\n"
                 
                 if action_type == "wheel":
                     direction = element["direction"]
                     clicks = element["clicks"]
                     
-                    # Multiply clicks by 100 for more noticeable scrolling
                     if direction in ['up', 'down']:
                         amount = (clicks * 100) if direction == 'up' else -(clicks * 100)
-                        script += f"    pyautogui.scroll({amount})  # Scroll {direction}\n"
+                        script += f"{action_indent}pyautogui.scroll({amount})  # Scroll {direction}\n"
                     else:  # left or right
                         amount = -(clicks * 100) if direction == 'left' else (clicks * 100)
-                        script += f"    pyautogui.hscroll({amount})  # Scroll {direction}\n"
+                        script += f"{action_indent}pyautogui.hscroll({amount})  # Scroll {direction}\n"
                 
                 elif action_type == "click":
                     coords = element["coordinates"]
-                    script += f"    pyautogui.moveTo({coords[0]}, {coords[1]}, duration=0.5)\n"
-                    script += f"    pyautogui.click()\n"
+                    script += f"{action_indent}pyautogui.moveTo({coords[0]}, {coords[1]}, duration=0.5)\n"
+                    script += f"{action_indent}pyautogui.click()\n"
                 
                 elif action_type == "right_click":
                     coords = element["coordinates"]
-                    script += f"    pyautogui.moveTo({coords[0]}, {coords[1]}, duration=0.5)\n"
-                    script += f"    pyautogui.rightClick()\n"
+                    script += f"{action_indent}pyautogui.moveTo({coords[0]}, {coords[1]}, duration=0.5)\n"
+                    script += f"{action_indent}pyautogui.rightClick()\n"
                 
                 elif action_type == "text":
-                    script += f"    pyautogui.write(\"{element['value']}\")\n"
+                    script += f"{action_indent}pyautogui.write(\"{element['value']}\")\n"
                 
                 elif action_type == "keys":
                     key_command = element['value'].lower().strip()
                     
-                    # Special handling for ESC key
                     if key_command in ['esc', 'escape']:
-                        script += """    # Using both keyboard library and Windows API for reliable ESC
-    keyboard.send('esc', do_press=True, do_release=True)
-    time.sleep(0.1)
-    
-    # Backup method using Windows API with scan code
-    scan_code = 0x01  # ESC scan code
-    windll.user32.keybd_event(win32con.VK_ESCAPE, scan_code, 0, 0)  # Key down
-    time.sleep(0.1)
-    windll.user32.keybd_event(win32con.VK_ESCAPE, scan_code, win32con.KEYEVENTF_KEYUP, 0)  # Key up\n"""
+                        script += (
+                            f"{action_indent}# Using both keyboard library and Windows API for reliable ESC\n"
+                            f"{action_indent}keyboard.send('esc', do_press=True, do_release=True)\n"
+                            f"{action_indent}time.sleep(0.1)\n"
+                            f"\n"
+                            f"{action_indent}# Backup method using Windows API with scan code\n"
+                            f"{action_indent}scan_code = 0x01  # ESC scan code\n"
+                            f"{action_indent}windll.user32.keybd_event(win32con.VK_ESCAPE, scan_code, 0, 0)  # Key down\n"
+                            f"{action_indent}time.sleep(0.1)\n"
+                            f"{action_indent}windll.user32.keybd_event(win32con.VK_ESCAPE, scan_code, win32con.KEYEVENTF_KEYUP, 0)  # Key up\n"
+                        )
                     else:
-                        # Handle other key commands as before
                         is_valid, _, command_type = self.validate_key_command(key_command)
                         if not is_valid:
-                            script += f"    # Warning: Invalid key command {key_command}\n"
+                            script += f"{action_indent}# Warning: Invalid key command {key_command}\n"
                         elif command_type == "single":
-                            script += f"    pyautogui.press(\"{key_command}\")\n"
+                            script += f"{action_indent}pyautogui.press(\"{key_command}\")\n"
                         else:  # combination
-                            script += f"    pyautogui.hotkey(*\"{key_command}\".split('+'))\n"
+                            script += f"{action_indent}pyautogui.hotkey(*\"{key_command}\".split('+'))\n"
                 
                 if element["pause"] > 0:
-                    script += f"    time.sleep({element['pause']})  # Pause for {element['pause']} seconds\n"
+                    script += f"{action_indent}time.sleep({element['pause']})  # Pause for {element['pause']} seconds\n"
             
-            script += """    print("Sequence completed!")
+            if loop_enabled:
+                script += (
+                    "\n            time.sleep(0.5)  # Short delay between iterations\n"
+                    "    except KeyboardInterrupt:\n"
+                    "        print(\"\\nLoop stopped by user\")"
+                )
 
-if __name__ == "__main__":
-    print("Press Ctrl+C to stop the sequence")
-    try:
-        execute_sequence()
-    except KeyboardInterrupt:
-        print("\\nSequence stopped by user")
-"""
+            script += (
+                "\n"
+                "\n"
+                "if __name__ == \"__main__\":\n"
+                "    print(\"Press Ctrl+C to stop the sequence\")\n"
+                "    try:\n"
+                "        execute_sequence()\n"
+                "    except KeyboardInterrupt:\n"
+                "        print(\"\\nSequence stopped by user\")"
+            )
             
             # Generate a simpler sequence number based on timestamp
             seq_num = len(os.listdir(self.scripts_dir)) + 1
@@ -403,4 +426,4 @@ if __name__ == "__main__":
             return f"Script generated: {script_filename}"
             
         except Exception as e:
-            return f"Error generating script: {str(e)}"
+            raise e
