@@ -149,10 +149,12 @@ def create_interface():
         result = parser.generate_script(loop_enabled=loop_enabled)
         return current_status + f"\n{result}"
 
-    interface = gr.Blocks(title="OmniParser Sequence Builder")
-    
+    interface = gr.Blocks()
+
     with interface:
-        gr.Markdown("# OmniParser Sequence Builder")
+        gr.Markdown("# OmniParser Sequence Builder")  # Main title
+        gr.Markdown('<p style="font-size: 14px; text-align: center;">Sponsored by: <a href="https://niggendo.org" target="_blank">riiahworld</a></p>')  # Smaller text and URL
+
         with gr.Row():
             with gr.Column(scale=1):
                 with gr.Tab("Process New"):
