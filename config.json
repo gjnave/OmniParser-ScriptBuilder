@@ -1,0 +1,35 @@
+{
+  "elements": {
+    "action_0": {
+      "type": "wheel",
+      "direction": "up",
+      "clicks": 50,
+      "name": "Scroll up (50 clicks)",
+      "pause": 0
+    },
+    "action_1": {
+      "type": "keys",
+      "value": "ctrl+l",
+      "name": "Press keys: ctrl+l",
+      "pause": 0
+    },
+    "action_2": {
+      "type": "text",
+      "value": "www.spotify.com",
+      "name": "Type text: www.spotify.com",
+      "pause": 0
+    },
+    "action_3": {
+      "type": "keys",
+      "value": "enter",
+      "name": "Press keys: enter",
+      "pause": 0
+    }
+  },
+  "sequences": [
+    "action_0",
+    "action_1",
+    "action_2",
+    "action_3"
+  ]
+}
